@@ -1,4 +1,6 @@
-# Roznamcha
+<p align="center">
+  <img src="./roznomcha-dark.png" alt="Roznamcha" width="460" />
+</p>
 
 <p align="left">
   <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-6a5acd" />
