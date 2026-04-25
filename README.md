@@ -17,11 +17,37 @@ Roznamcha is a polished cross-platform desktop journal app built with Electron, 
 - 📝 Rich editor with headings, lists, quotes, links, tables, code blocks, and markdown workflows
 - 🔐 Per-entry and global journal encryption using AES-256-GCM + PBKDF2
 - 🎨 Extensive theming (muted, dark, pastel, neon, high contrast, gothic/crimson, sapphire, amethyst, metallic, and more)
-- ⚙️ Settings for fonts, auto-save, backup, theme customization, and security options
+- ⚙️ Settings for fonts, auto-save, backup, theme customization, security options, and LLM provider configuration
 - 🔎 Search across titles, tags, and unlocked content
 - 📦 Import markdown and export entries to Markdown, HTML, or PDF
 - ⌨️ Keyboard shortcuts for fast writing workflows
 - ℹ️ Clickable app logo opens an About modal with version, license, and repository metadata
+- 🤖 Integrated LLM assistant drawer with markdown-rendered responses inserted directly into the active entry
+
+## 🤖 LLM Assistant
+
+Roznamcha includes an in-editor LLM interface that slides up from the bottom of the editor pane, matching the same visual language as the rest of the app.
+
+### Supported Providers
+
+- Ollama (`/api/chat`)
+- OpenAI API-compatible servers (`/v1/chat/completions`)
+
+### LLM Settings
+
+Configure these options in Settings:
+
+- Provider
+- Base URL
+- Model
+- Context window size
+- API key (for OpenAI-compatible services)
+
+### Editor Behavior
+
+- The LLM drawer is opened from the toolbar button beside Markdown.
+- Raw Markdown and LLM drawers are mutually exclusive (opening one closes the other).
+- LLM responses are parsed as markdown and inserted into the current entry as rendered rich text.
 
 ## 🧱 Tech Stack
 
