@@ -1,4 +1,5 @@
 export type EncryptionScope = 'none' | 'entry' | 'global'
+export type LlmProvider = 'ollama' | 'openai-compatible'
 
 export type ThemePreset = 'muted' | 'dark' | 'pastel' | 'neon' | 'high-contrast'
 
@@ -44,6 +45,20 @@ export interface AppSettings {
   defaultEditorMode: 'rich' | 'split' | 'markdown'
   defaultEncryptionScope: EncryptionScope
   globalEncryptionEnabled: boolean
+  llmProvider: LlmProvider
+  llmBaseUrl: string
+  llmModel: string
+  llmContextWindow: number
+  llmApiKey: string
+}
+
+export interface LlmRequestInput {
+  prompt: string
+  entryContent: string
+}
+
+export interface LlmResponse {
+  content: string
 }
 
 export interface GlobalEncryptionState {

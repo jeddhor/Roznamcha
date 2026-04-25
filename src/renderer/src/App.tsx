@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { parseISO } from 'date-fns'
 import { CalendarWidget } from './components/CalendarWidget'
 import { EditorPane } from './components/EditorPane'
@@ -33,16 +33,6 @@ function isDarkTheme(theme: ThemeConfig | null): boolean {
   return luminance < 0.45
 }
 
-function normalizeRichTextHtml(html: string): string {
-  const cleaned = html
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p>\s*<br\s*\/?\s*>\s*<\/p>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .trim()
-
-  return cleaned ? html : ''
-}
-
 function App(): React.JSX.Element {
   const {
     selectedDate,
@@ -72,13 +62,6 @@ function App(): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
-  const lastAutoSaveSnapshot = useRef<{
-    entryId: string
-    title: string
-    content: string
-    tagsKey: string
-    encryptionScope: string
-  } | null>(null)
 
   useEffect(() => {
     init()
@@ -133,21 +116,6 @@ function App(): React.JSX.Element {
   }, [aboutOpen])
 
   useEffect(() => {
-    if (!activeEntry || activeEntry.isLocked) {
-      lastAutoSaveSnapshot.current = null
-      return
-    }
-
-    lastAutoSaveSnapshot.current = {
-      entryId: activeEntry.id,
-      title: activeEntry.title,
-      content: activeEntry.content,
-      tagsKey: activeEntry.tags.join('|'),
-      encryptionScope: activeEntry.encryptionScope
-    }
-  }, [activeEntry])
-
-  useEffect(() => {
     if (!settings || !activeEntry || activeEntry.isLocked) return
 
     const id = window.setInterval(() => {
@@ -160,8 +128,8 @@ function App(): React.JSX.Element {
         return
       }
 
-      const editor = document.querySelector('.tiptap') as HTMLElement | null
-      const content = normalizeRichTextHtml(editor?.innerHTML ?? activeEntry.content)
+      const content =
+        (document.querySelector('[data-entry-content]') as HTMLInputElement | null)?.value ?? activeEntry.content
       const title =
         (document.querySelector('[data-entry-title]') as HTMLInputElement | null)?.value || activeEntry.title
       const tagsInput = (document.querySelector('[data-entry-tags]') as HTMLInputElement | null)?.value ?? ''
@@ -180,30 +148,9 @@ function App(): React.JSX.Element {
         return
       }
 
-      const snapshot = {
-        entryId: activeEntry.id,
+      saveEntry({
         title,
         content,
-        tagsKey: tags.join('|'),
-        encryptionScope
-      }
-
-      const last = lastAutoSaveSnapshot.current
-      if (
-        last &&
-        last.entryId === snapshot.entryId &&
-        last.title === snapshot.title &&
-        last.content === snapshot.content &&
-        last.tagsKey === snapshot.tagsKey &&
-        last.encryptionScope === snapshot.encryptionScope
-      ) {
-        return
-      }
-
-      lastAutoSaveSnapshot.current = snapshot
-      saveEntry({
-        title: snapshot.title,
-        content: snapshot.content,
         tags,
         encryptionScope,
         password: encryptionScope === 'entry' ? entryPassword : undefined

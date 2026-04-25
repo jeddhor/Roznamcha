@@ -38,6 +38,9 @@ const api: AppApi = {
   system: {
     listFonts: () => electronAPI.ipcRenderer.invoke('system:listFonts')
   },
+  llm: {
+    ask: (input) => electronAPI.ipcRenderer.invoke('llm:ask', input)
+  },
   appMeta: {
     getInfo: () => electronAPI.ipcRenderer.invoke('app:getInfo')
   }

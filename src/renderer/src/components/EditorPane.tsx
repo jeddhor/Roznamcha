@@ -23,6 +23,8 @@ import {
   Link2,
   ArrowRightLeft,
   FileCode2,
+  Bot,
+  Send,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -47,13 +49,14 @@ interface EditorPaneProps {
 }
 
 function normalizeRichTextHtml(html: string): string {
-  const cleaned = html
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p>\s*<br\s*\/?\s*>\s*<\/p>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .trim()
+  const normalizedWhitespace = html.replace(/&nbsp;/g, ' ')
 
-  return cleaned ? html : ''
+  // Remove only ProseMirror's synthetic trailing break paragraph.
+  // This keeps intentional trailing whitespace authored by the user.
+  return normalizedWhitespace.replace(
+    /<p>\s*<br\b[^>]*\bclass=("|')[^"']*\bProseMirror-trailingBreak\b[^"']*\1[^>]*>\s*<\/p>\s*$/i,
+    ''
+  )
 }
 
 function normalizeMarkdownText(markdown: string): string {
@@ -69,6 +72,11 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
   const [showEntryPassword, setShowEntryPassword] = useState(false)
   const [unlockPassword, setUnlockPassword] = useState('')
   const [showMarkdown, setShowMarkdown] = useState(false)
+  const [showLlm, setShowLlm] = useState(false)
+  const [llmPrompt, setLlmPrompt] = useState('')
+  const [llmBusy, setLlmBusy] = useState(false)
+  const [llmError, setLlmError] = useState<string | null>(null)
+  const [editorHtml, setEditorHtml] = useState('')
   const currentEntryIdRef = useRef<string | null>(null)
 
   const isMacLikePlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
@@ -89,6 +97,9 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
       TableHeader
     ],
     content: '',
+    onUpdate: ({ editor }) => {
+      setEditorHtml(normalizeRichTextHtml(editor.getHTML() ?? ''))
+    },
     immediatelyRender: false
   })
 
@@ -102,6 +113,10 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
       setShowEntryPassword(false)
       setUnlockPassword('')
       setShowMarkdown(false)
+      setShowLlm(false)
+      setLlmPrompt('')
+      setLlmError(null)
+      setEditorHtml('')
       currentEntryIdRef.current = null
       return
     }
@@ -116,14 +131,19 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
       setShowEntryPassword(false)
       setUnlockPassword('')
       setShowMarkdown(false)
+      setShowLlm(false)
+      setLlmPrompt('')
+      setLlmError(null)
       currentEntryIdRef.current = entry.id
     }
 
     if (!entry.isLocked) {
       editor?.commands.setContent(entry.content || '<p></p>', { emitUpdate: false })
+      setEditorHtml(normalizeRichTextHtml(entry.content || ''))
       setMarkdownInput(normalizeMarkdownText(turndown.turndown(entry.content || '')))
     } else {
       editor?.commands.clearContent()
+      setEditorHtml('')
       setMarkdownInput('')
     }
   }, [entry, editor, turndown])
@@ -192,8 +212,37 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
     setMarkdownInput(normalizeMarkdownText(turndown.turndown(html)))
   }
 
+  const sendLlmPrompt = async (): Promise<void> => {
+    const prompt = llmPrompt.trim()
+    if (!prompt || llmBusy) {
+      return
+    }
+
+    try {
+      setLlmBusy(true)
+      setLlmError(null)
+      const response = await window.api.llm.ask({
+        prompt,
+        entryContent: editorHtml
+      })
+
+      if (!response.content.trim()) {
+        throw new Error('The LLM returned an empty response.')
+      }
+
+      const llmHtml = marked.parse(response.content) as string
+      editor?.chain().focus('end').insertContent(`<p></p>${llmHtml}`).run()
+      setLlmPrompt('')
+    } catch (error) {
+      setLlmError((error as Error).message)
+    } finally {
+      setLlmBusy(false)
+    }
+  }
+
   return (
     <div className="card flex h-full flex-col overflow-hidden">
+      <input type="hidden" data-entry-content value={editorHtml} readOnly />
       <div className="editor-header">
         <div className="entry-title-row">
           <input
@@ -386,10 +435,27 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
           <span className="toolbar-divider" />
 
           <div className="toolbar-group" aria-label="Markdown drawer">
-            <button className="toolbar-btn toolbar-wide" onClick={() => setShowMarkdown((value) => !value)}>
+            <button
+              className="toolbar-btn toolbar-wide"
+              onClick={() => {
+                setShowLlm(false)
+                setShowMarkdown((value) => !value)
+              }}
+            >
               <FileCode2 size={18} strokeWidth={2.2} />
               Markdown
               {showMarkdown ? <ChevronDown size={16} strokeWidth={2.2} /> : <ChevronUp size={16} strokeWidth={2.2} />}
+            </button>
+            <button
+              className="toolbar-btn toolbar-wide"
+              onClick={() => {
+                setShowMarkdown(false)
+                setShowLlm((value) => !value)
+              }}
+            >
+              <Bot size={18} strokeWidth={2.2} />
+              LLM
+              {showLlm ? <ChevronDown size={16} strokeWidth={2.2} /> : <ChevronUp size={16} strokeWidth={2.2} />}
             </button>
           </div>
         </div>
@@ -413,6 +479,30 @@ export function EditorPane({ entry, settings, isSaving, onSave, onLock, onUnlock
             onChange={(event) => setMarkdownInput(event.target.value)}
             placeholder="Markdown source"
           />
+        </div>
+
+        <div className={`llm-drawer ${showLlm ? 'llm-drawer-open' : ''}`}>
+          <div className="llm-drawer-header">
+            <span>LLM Assistant</span>
+            <button className="ghost-btn" onClick={() => setShowLlm(false)}>
+              Close
+            </button>
+          </div>
+          <div className="llm-drawer-body">
+            <textarea
+              className="llm-drawer-textarea"
+              value={llmPrompt}
+              onChange={(event) => setLlmPrompt(event.target.value)}
+              placeholder="Describe what you want to add to this entry..."
+            />
+            {llmError ? <div className="llm-error-banner">{llmError}</div> : null}
+            <div className="llm-actions">
+              <button className="primary-btn llm-send-btn" onClick={() => void sendLlmPrompt()} disabled={llmBusy}>
+                <Send size={15} strokeWidth={2.2} />
+                {llmBusy ? 'Sending...' : 'Send to LLM'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

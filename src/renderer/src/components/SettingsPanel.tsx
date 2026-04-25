@@ -225,6 +225,66 @@ export function SettingsPanel({
       </section>
 
       <section className="settings-section">
+        <h3>LLM</h3>
+        <label className="field-row">
+          Provider
+          <select
+            className="field"
+            value={localSettings.llmProvider}
+            onChange={(event) =>
+              setLocalSettings({
+                ...localSettings,
+                llmProvider: event.target.value as AppSettings['llmProvider']
+              })
+            }
+          >
+            <option value="ollama">Ollama</option>
+            <option value="openai-compatible">OpenAI API Compatible</option>
+          </select>
+        </label>
+        <label className="field-row">
+          Base URL
+          <input
+            className="field"
+            value={localSettings.llmBaseUrl}
+            placeholder={localSettings.llmProvider === 'ollama' ? 'http://127.0.0.1:11434' : 'http://localhost:8000'}
+            onChange={(event) => setLocalSettings({ ...localSettings, llmBaseUrl: event.target.value })}
+          />
+        </label>
+        <label className="field-row">
+          Model
+          <input
+            className="field"
+            value={localSettings.llmModel}
+            placeholder="llama3.1"
+            onChange={(event) => setLocalSettings({ ...localSettings, llmModel: event.target.value })}
+          />
+        </label>
+        <label className="field-row">
+          Context window (tokens)
+          <input
+            className="field"
+            type="number"
+            min={256}
+            max={65536}
+            step={256}
+            value={localSettings.llmContextWindow}
+            onChange={(event) => setLocalSettings({ ...localSettings, llmContextWindow: Number(event.target.value) })}
+          />
+        </label>
+        <label className="field-row">
+          API key (for OpenAI-compatible)
+          <input
+            className="field"
+            type="password"
+            value={localSettings.llmApiKey}
+            placeholder="Optional for local servers"
+            onChange={(event) => setLocalSettings({ ...localSettings, llmApiKey: event.target.value })}
+          />
+        </label>
+      </section>
+
+      <section className="settings-section">
         <h3>Encryption</h3>
         <p className="text-sm text-[var(--muted-text)]">
           Global encryption is {globalEncryption.enabled ? 'enabled' : 'disabled'} and{' '}

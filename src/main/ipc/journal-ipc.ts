@@ -13,6 +13,7 @@ import {
   getThemes,
   importMarkdownFile,
   initializeJournalStore,
+  askLlm,
   listEntriesByDate,
   lockEntry,
   lockGlobal,
@@ -54,6 +55,7 @@ export function registerJournalIpc(): void {
   ipcMain.handle('file:createBackup', () => createBackup())
 
   ipcMain.handle('system:listFonts', () => listSystemFonts())
+  ipcMain.handle('llm:ask', (_, payload) => askLlm(payload))
   ipcMain.handle('app:getInfo', () => ({
     name: 'Roznamcha',
     version: app.getVersion(),

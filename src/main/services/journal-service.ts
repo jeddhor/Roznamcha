@@ -11,6 +11,8 @@ import {
   GlobalEncryptionState,
   JournalEntry,
   JournalEntryMeta,
+  LlmRequestInput,
+  LlmResponse,
   SaveEntryInput,
   ThemeConfig,
   UnlockEntryInput
@@ -33,7 +35,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoSaveSeconds: 6,
   defaultEditorMode: 'split',
   defaultEncryptionScope: 'none',
-  globalEncryptionEnabled: false
+  globalEncryptionEnabled: false,
+  llmProvider: 'ollama',
+  llmBaseUrl: 'http://127.0.0.1:11434',
+  llmModel: 'llama3.1',
+  llmContextWindow: 4096,
+  llmApiKey: ''
 }
 
 const PRESET_THEMES: ThemeConfig[] = [
@@ -282,6 +289,113 @@ export function getSettings(): AppSettings {
 export function saveSettings(settings: AppSettings): AppSettings {
   setSetting('app-settings', settings)
   return getSettings()
+}
+
+function buildContextExcerpt(entryContent: string, contextWindow: number): string {
+  const plain = entryContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!plain) {
+    return '(Entry is currently empty.)'
+  }
+
+  const maxChars = Math.max(400, contextWindow * 4)
+  if (plain.length <= maxChars) {
+    return plain
+  }
+
+  return plain.slice(plain.length - maxChars)
+}
+
+function ensureNoTrailingSlash(value: string): string {
+  return value.trim().replace(/\/+$/, '')
+}
+
+export async function askLlm(input: LlmRequestInput): Promise<LlmResponse> {
+  const settings = getSettings()
+  const prompt = input.prompt.trim()
+  if (!prompt) {
+    throw new Error('Prompt is required')
+  }
+
+  const baseUrl = ensureNoTrailingSlash(settings.llmBaseUrl)
+  if (!baseUrl) {
+    throw new Error('LLM base URL is required in Settings')
+  }
+  if (!settings.llmModel.trim()) {
+    throw new Error('LLM model is required in Settings')
+  }
+
+  const contextExcerpt = buildContextExcerpt(input.entryContent, settings.llmContextWindow)
+  const userMessage = `Entry context:\n${contextExcerpt}\n\nUser request:\n${prompt}`
+
+  if (settings.llmProvider === 'ollama') {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: settings.llmModel,
+        stream: false,
+        options: {
+          num_ctx: settings.llmContextWindow
+        },
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are assisting with a journal entry. Return clean markdown only, with no surrounding commentary about formatting.'
+          },
+          {
+            role: 'user',
+            content: userMessage
+          }
+        ]
+      })
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`Ollama request failed (${response.status}): ${body || response.statusText}`)
+    }
+
+    const data = (await response.json()) as { message?: { content?: string } }
+    return { content: data.message?.content?.trim() ?? '' }
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  }
+  if (settings.llmApiKey.trim()) {
+    headers.Authorization = `Bearer ${settings.llmApiKey.trim()}`
+  }
+
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model: settings.llmModel,
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are assisting with a journal entry. Return clean markdown only, with no surrounding commentary about formatting.'
+        },
+        {
+          role: 'user',
+          content: userMessage
+        }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`LLM request failed (${response.status}): ${body || response.statusText}`)
+  }
+
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
+  return { content: data.choices?.[0]?.message?.content?.trim() ?? '' }
 }
 
 export function getThemes(): ThemeConfig[] {

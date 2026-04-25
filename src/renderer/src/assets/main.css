@@ -781,6 +781,86 @@ textarea {
   outline: none;
 }
 
+.llm-drawer {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(16px);
+  overflow: hidden;
+  border-top: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface), white 6%);
+  transition: max-height 260ms ease, opacity 220ms ease, transform 260ms ease, border-color 220ms ease;
+}
+
+.llm-drawer-open {
+  max-height: 340px;
+  opacity: 1;
+  transform: translateY(0);
+  border-top-color: color-mix(in srgb, var(--border), transparent 24%);
+}
+
+.llm-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted-text), black 5%);
+  font-weight: 600;
+}
+
+.llm-drawer-body {
+  display: grid;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border), transparent 28%);
+}
+
+.llm-drawer-textarea {
+  width: 100%;
+  min-height: 140px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 20%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface), white 4%);
+  color: var(--text);
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.llm-drawer-textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent), transparent 35%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent), transparent 82%);
+}
+
+.llm-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.llm-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.llm-send-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.llm-error-banner {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--danger), white 62%);
+  background: color-mix(in srgb, var(--danger), white 84%);
+  color: color-mix(in srgb, var(--danger), black 18%);
+  font-size: 12px;
+}
+
 .editor-host {
   flex: 1;
   min-height: 0;

@@ -5,6 +5,8 @@ import {
   GlobalEncryptionState,
   JournalEntry,
   JournalEntryMeta,
+  LlmRequestInput,
+  LlmResponse,
   SaveEntryInput,
   ThemeConfig
 } from '../../../shared/models'
@@ -48,6 +50,10 @@ export interface SystemApi {
   listFonts(): Promise<string[]>
 }
 
+export interface LlmApi {
+  ask(input: LlmRequestInput): Promise<LlmResponse>
+}
+
 export interface AppInfo {
   name: string
   version: string
@@ -66,5 +72,6 @@ export interface AppApi {
   security: SecurityApi
   file: FileApi
   system: SystemApi
+  llm: LlmApi
   appMeta: AppMetaApi
 }
